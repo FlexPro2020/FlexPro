@@ -5,6 +5,11 @@ GPIO.setmode(GPIO.BCM)
 
 #statemachine in software voor pauze en shutdown
 
+#Distance between sub system form start in mm
+Distance = 1
+
+
+
 #General motor setup
 M1_0 = 14   # Controling the microstepping
 M1_1 = 15   # Controling the microstepping
@@ -79,6 +84,7 @@ IR_Sensor = 11
 
 GPIO.setup(IR_Sensor, GPIO.IN)
 
+
 # Setting the resolution and timing of the steppers
 RESOLUTION = {'Full': (0, 0, 0),
               'Half': (1, 0, 0),
@@ -91,13 +97,13 @@ SENSOR_MODE = (M1_0, M1_1, M1_2)   # Microstep Resolution GPIO Pins
 GPIO.setup(SENSOR_MODE, GPIO.OUT)
 GPIO.output(SENSOR_MODE, RESOLUTION['Half'])
 step_count_Sensor = SPR * 2
-delay_Sensor = .005 / 2
+delay_Sensor = .01 
 
 BELT_MODE = (M2_0, M2_1, M2_2)   # Microstep Resolution GPIO Pins
 GPIO.setup(BELT_MODE, GPIO.OUT)
 GPIO.output(BELT_MODE, RESOLUTION['Full'])
 step_count_Belt = SPR * 1
-delay_Belt = .005 / 1
+delay_Belt = .00045 / 1
 
 
 def Calibration_Sensor_Left():
@@ -113,6 +119,7 @@ def Calibration_Sensor_Left():
         elif (GPIO.input(S_SENSOR_LEFT) == True):
             break:
 
+
 def Calibration_Sensor_Right():
     #Calibration of the right sensor
     GPIO.output(DIR_M_S_Right, CCW)
@@ -125,15 +132,15 @@ def Calibration_Sensor_Right():
             
         elif (GPIO.output(S_SENSOR_RIGHT) == True):
             break:
-    
-SWITCH_END = 0
 
-Total_Steps_Belt = 0
 
 def Calibration_Belt():
+    SWITCH_END = 0
+    Total_Steps_Belt = 0
+    GPIO.output(DIR_M_B, CW)
+    
     while True:
         if ((GPIO.input(S_BELT_END) == False) and (SWITCH_END == 0)):
-            GPIO.output(DIR_M_B, CW)
             GPIO.output(STEP_M_S_Right, GPIO.HIGH)
             sleep(delay_Sensor)
             GPIO.output(STEP_M_S_Right, GPIO.LOW)
@@ -154,33 +161,109 @@ def Calibration_Belt():
         elif ((GPIO.input(S_BELT_START) == True) and (SWITCH_END == 1)):
             break:
         
-            
-    
     return Total_Steps_Belt
+
 
 def Calibration_Dispenser():
     while True:
         if (GPIO.input(S_DISPENSER) == False):
             GPIO.output(PISTON_OUT, GPIO.HIGH)
-            sleep(1)
+            sleep(0.5)
             GPIO.output(PISTON_OUT, GPIO.LOW)
             
-        elif (GPIO.input(S_DISPENSER) == False):
+        elif (GPIO.input(S_DISPENSER) == True):
             break:
 
 
+def Calibration_Blower():
+    GPIO.output(BlOWER_LEFT, HIGH)
+    sleep(1)
+    GPIO.output(BlOWER_LEFT, LOW)
+    sleep(2)
+    
+    GPIO.output(BlOWER_RIGHT, HIGH)
+    sleep(1)
+    GPIO.output(BlOWER_RIGHT, LOW)
+
+
 def Sensor_TO_0():
+    GPIO.output(DIR_M_S_Left, CW)
+    GPIO.output(DIR_M_S_Right, CCW)
+    
     while True:
         if ((GPIO.input(S_SENSOR_LEFT) == False) and (GPIO.input(S_SENSOR_RIGHT) == False)):
-            
+            GPIO.output(STEP_M_S_Right, GPIO.HIGH)
+            GPIO.output(STEP_M_S_Left, GPIO.HIGH)
+            sleep(delay_Sensor)
+            GPIO.output(STEP_M_S_Right, GPIO.LOW)
+            GPIO.output(STEP_M_S_Left, GPIO.LOW)
+            sleep(delay_Sensor)
             
         elif ((GPIO.input(S_SENSOR_LEFT) == False) and (GPIO.input(S_SENSOR_RIGHT) == True)):
-            
+            GPIO.output(STEP_M_S_Left, GPIO.HIGH)
+            sleep(delay_Sensor)
+            GPIO.output(STEP_M_S_Left, GPIO.LOW)
+            sleep(delay_Sensor)
         
-             
-    
+        elif ((GPIO.input(S_SENSOR_LEFT) == True) and (GPIO.input(S_SENSOR_RIGHT) == False)):
+            GPIO.output(STEP_M_S_Right, GPIO.HIGH)
+            sleep(delay_Sensor)
+            GPIO.output(STEP_M_S_Right, GPIO.LOW)
+            sleep(delay_Sensor)
+            
+        elif ((GPIO.input(S_SENSOR_LEFT) == True) and(GPIO.input(S_SENSOR_RIGHT) == True)):
+            break:
+
 
 def Sensor_TO_200():
+    GPIO.output(DIR_M_S_Left, CCW)
+    GPIO.output(DIR_M_S_Right, CW)
+    steps_for_200 = 111    #111 steps for roting ~200 degrees
+    
+    for x in range(steps_for_200):
+        GPIO.output(STEP_M_S_Right, GPIO.HIGH)
+        GPIO.output(STEP_M_S_Left, GPIO.HIGH)
+        sleep(delay_Sensor)
+        GPIO.output(STEP_M_S_Right, GPIO.LOW)
+        GPIO.output(STEP_M_S_Left, GPIO.LOW)
+        sleep(delay_Sensor)
+
+
+def Belt_TO_Measure(Total_Steps_Belt):
+    GPIO.output(DIR_M_B, CW)
+    pass
+
+
+def Belt_TO_Blower(Total_Steps_Belt):
+    GPIO.output(DIR_M_B, CCW)
+    pass
+
+
+def Belt_TO_Dispenser(Total_Steps_Belt):
+    GPIO.output(DIR_M_B, CCW)
+    pass
+
+
+def Dispenser():
+    while True:
+        if(IR_Sensor == False):
+            GPIO.output(PISTON_OUT, HIGH)
+            sleep(0.5)
+            GPIO.output(PISTON_OUT, LOW)
+            sleep(0.5)
+            break:
+
+
+def Blower_Left():
+    GPIO.output(BlOWER_LEFT, HIGH)
+    sleep(0.5)
+    GPIO.output(BlOWER_LEFT, LOW)
+
+
+def Blower_Right():
+    GPIO.output(BlOWER_RIGHT, HIGH)
+    sleep(0.5)
+    GPIO.output(BlOWER_RIGHT, LOW)
     
     
 GPIO.output(MOTOR_POWER, GPIO.HIGH)
@@ -193,21 +276,4 @@ Calibration_Belt()
 while True:
     
 
-# while True:
-#     sleep(1)
-#     GPIO.output(DIR, CW)
-#     for x in range(step_count):
-#         GPIO.output(STEP, GPIO.HIGH)
-#         sleep(delay)
-#         GPIO.output(STEP, GPIO.LOW)
-#         sleep(delay)
-# 
-#     sleep(1)
-#     GPIO.output(DIR, CCW)
-#     for x in range(step_count):
-#         GPIO.output(STEP, GPIO.HIGH)
-#         sleep(delay)
-#         GPIO.output(STEP, GPIO.LOW)
-#         sleep(delay)
-# 
-# GPIO.cleanup()
+#GPIO.cleanup()
