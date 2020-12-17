@@ -6,8 +6,10 @@ GPIO.setmode(GPIO.BCM)
 #statemachine in software voor pauze en shutdown
 
 #Distance between sub system form start in mm
-Distance = 1
-
+Distance_Total = 1
+Distance_Measure = 1
+Distance_Blower = 1
+Distance_Dispenser = 1
 
 
 #General motor setup
