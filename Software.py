@@ -1,15 +1,46 @@
 from time import sleep
 import RPi.GPIO as GPIO
 
+GPIO.cleanup()
 GPIO.setmode(GPIO.BCM)
 
 #statemachine in software voor pauze en shutdown
 
-#Distance between sub system form start in mm
-Distance_Total = 1
-Distance_Measure = 1
-Distance_Blower = 1
-Distance_Dispenser = 1
+
+#Pulley diameter in mm
+Pulley = 58.7
+Contact_Pulley_Step = Pulley / 200
+
+
+# General overview about the distances (Not to scale)
+# Everything is measured from point 0 to the sub system
+# |       |         |            |                  |
+# |-------|---------|------------|------------------|
+# |       |         |            |                  |
+# 
+# 0       A         B            C                  D
+
+#Distance between sub-system form 0 in mm
+Distance_Dispenser = 1  #A
+Distance_Blower = 1     #B
+Distance_Measure = 1    #C
+Distance_Total = 1      #D
+
+
+#Distance between sub-systems
+Distance_A_C = Distance_Measure - Distance_Dispenser
+Distance_C_B = Distance_Measure - Distance_Blower
+Distance_B_A = Distance_Blower - Distance_Dispenser
+
+
+#Distance in steps
+Steps_A_C = Distance_A_C / Contact_Pulley_Step
+Steps_C_B = Distance_C_B / Contact_Pulley_Step
+Steps_B_A = Distance_B_A / Contact_Pulley_Step
+
+Steps_To_Measure = int(Steps_A_C)
+Steps_To_Blower = int(Steps_C_B)
+Steps_To_Dispenser = int(Steps_B_A)
 
 
 #General motor setup
@@ -119,7 +150,7 @@ def Calibration_Sensor_Left():
             sleep(delay_Sensor)
             
         elif (GPIO.input(S_SENSOR_LEFT) == True):
-            break:
+            break
 
 
 def Calibration_Sensor_Right():
@@ -133,7 +164,7 @@ def Calibration_Sensor_Right():
             sleep(delay_Sensor)
             
         elif (GPIO.output(S_SENSOR_RIGHT) == True):
-            break:
+            break
 
 
 def Calibration_Belt():
@@ -161,7 +192,7 @@ def Calibration_Belt():
             Total_Steps_Belt =+ 1
             
         elif ((GPIO.input(S_BELT_START) == True) and (SWITCH_END == 1)):
-            break:
+            break
         
     return Total_Steps_Belt
 
@@ -174,7 +205,7 @@ def Calibration_Dispenser():
             GPIO.output(PISTON_OUT, GPIO.LOW)
             
         elif (GPIO.input(S_DISPENSER) == True):
-            break:
+            break
 
 
 def Calibration_Blower():
@@ -214,7 +245,10 @@ def Sensor_TO_0():
             sleep(delay_Sensor)
             
         elif ((GPIO.input(S_SENSOR_LEFT) == True) and(GPIO.input(S_SENSOR_RIGHT) == True)):
-            break:
+            break
+
+    Sensor_State = 1
+    return Sensor_State
 
 
 def Sensor_TO_200():
@@ -229,21 +263,38 @@ def Sensor_TO_200():
         GPIO.output(STEP_M_S_Right, GPIO.LOW)
         GPIO.output(STEP_M_S_Left, GPIO.LOW)
         sleep(delay_Sensor)
+    Sensor_State = 0
+    return Sensor_State
 
 
 def Belt_TO_Measure(Total_Steps_Belt):
     GPIO.output(DIR_M_B, CW)
-    pass
+    
+    for x in range(Steps_To_Dispenser):
+        sleep(delay_Belt)
+        GPIO.output(STEP_M_B, GPIO.HIGH)
+        sleep(delay_Belt)
+        GPIO.output(STEP_M_B, GPIO.LOW)
 
 
 def Belt_TO_Blower(Total_Steps_Belt):
     GPIO.output(DIR_M_B, CCW)
-    pass
+    
+    for x in range(Steps_To_Dispenser):
+        sleep(delay_Belt)
+        GPIO.output(STEP_M_B, GPIO.HIGH)
+        sleep(delay_Belt)
+        GPIO.output(STEP_M_B, GPIO.LOW)
 
 
 def Belt_TO_Dispenser(Total_Steps_Belt):
     GPIO.output(DIR_M_B, CCW)
-    pass
+    
+    for x in range(Steps_To_Dispenser):
+        sleep(delay_Belt)
+        GPIO.output(STEP_M_B, GPIO.HIGH)
+        sleep(delay_Belt)
+        GPIO.output(STEP_M_B, GPIO.LOW)
 
 
 def Dispenser():
@@ -252,30 +303,53 @@ def Dispenser():
             GPIO.output(PISTON_OUT, HIGH)
             sleep(0.5)
             GPIO.output(PISTON_OUT, LOW)
-            sleep(0.5)
-            break:
+            break
 
 
 def Blower_Left():
     GPIO.output(BlOWER_LEFT, HIGH)
     sleep(0.5)
     GPIO.output(BlOWER_LEFT, LOW)
+    Blower = "Left"
+    return Blower
 
 
 def Blower_Right():
     GPIO.output(BlOWER_RIGHT, HIGH)
     sleep(0.5)
     GPIO.output(BlOWER_RIGHT, LOW)
-    
-    
+    Blower = "Right"
+    return Blower
+
+
 GPIO.output(MOTOR_POWER, GPIO.HIGH)
 Calibration_Sensor_Left()
 Calibration_Sensor_Right()
+Calibration_Dispenser()
+Calibration_Blower()
 Calibration_Belt()
 
 
-
 while True:
+    Dispenser()
+    sleep(0.5)
+    Belt_To_Measure()
     
+    if(Sensor_State == 0):
+        Sensor_To_0()
+        
+    if(Sensor_State == 1):
+        Sensor_T0_200()
+    
+    Belt_To_Blower()
+    
+    if(Blower == "Left"):
+        Blower_Right()
 
-#GPIO.cleanup()
+    if(Blower == "Right"):
+        Blower_Left()
+
+    Belt_To_Dispenser()
+
+
+GPIO.cleanup()
